@@ -33,6 +33,7 @@ jobs:
           WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
         run: |
           mkdir -p eval_results
+          chmod -R 777 eval_results
 
           PUSH_FLAG="--no-push-to-hub"
           HF_REPO_ID_VALUE=""
@@ -42,6 +43,7 @@ jobs:
           fi
 
           docker run --rm \
+            --user "$(id -u):$(id -g)" \
             -e HF_TOKEN="${HF_TOKEN}" \
             -e WANDB_API_KEY="${WANDB_API_KEY}" \
             -e HF_REPO_ID="${HF_REPO_ID_VALUE}" \
