@@ -52,8 +52,8 @@ jobs:
               --run-mode SMALL_RUN \
               --disable-wandb \
               ${PUSH_FLAG} \
-              --data-path /app/results/anli_data.pickle \
-              --label-map-path /app/results/id2label.json \
+              --data-path /app/results/anli_text_classification_data.pickle \
+              --label-map-path /app/id2label.json \
               --output-dir /app/results/model \
               --logging-dir /app/results/logs \
               --report-path /app/results/eval_report.json
