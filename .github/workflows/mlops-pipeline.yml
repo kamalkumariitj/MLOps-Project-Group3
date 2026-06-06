@@ -49,7 +49,7 @@ jobs:
             -e HF_REPO_ID="${HF_REPO_ID_VALUE}" \
             -v "${{ github.workspace }}:/app" \
             mlops python main.py \
-              --run-mode SMALL_RUN \
+              --run-mode FULL_RUN \
               --disable-wandb \
               ${PUSH_FLAG} \
               --data-path /app/results/anli_text_classification_data.pickle \
