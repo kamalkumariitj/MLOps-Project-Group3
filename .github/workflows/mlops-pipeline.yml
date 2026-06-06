@@ -43,7 +43,7 @@ jobs:
           fi
 
           docker run --rm \
-            --user "$(id -u):$(id -g)" \
+            --user root \
             -e HF_TOKEN="${HF_TOKEN}" \
             -e WANDB_API_KEY="${WANDB_API_KEY}" \
             -e HF_REPO_ID="${HF_REPO_ID_VALUE}" \
