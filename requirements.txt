@@ -1,0 +1,14 @@
+transformers>=4.40.0
+torch>=2.2.0
+accelerate>=1.1.0
+datasets
+scikit-learn
+pandas
+numpy
+requests
+gdown
+wandb
+nbformat
+huggingface_hub
+certifi
+python-dotenv
