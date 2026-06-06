@@ -24,7 +24,4 @@ ENV RUN_MODE=${RUN_MODE}
 
 COPY config.py data.py train.py eval.py utils.py main.py /app/
 
-RUN useradd --create-home appuser && chown -R appuser:appuser /app
-USER appuser
-
 CMD ["sh", "-c", "python main.py --run-mode \"${RUN_MODE}\" --disable-wandb --no-push-to-hub"]
