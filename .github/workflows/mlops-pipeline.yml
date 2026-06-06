@@ -32,8 +32,8 @@ jobs:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
         run: |
-          mkdir -p eval_results
-          chmod -R 777 eval_results
+          mkdir -p results
+          chmod -R 777 results
 
           PUSH_FLAG="--no-push-to-hub"
           HF_REPO_ID_VALUE=""
@@ -52,11 +52,11 @@ jobs:
               --run-mode SMALL_RUN \
               --disable-wandb \
               ${PUSH_FLAG} \
-              --data-path /app/eval_results/anli_data.pickle \
-              --label-map-path /app/eval_results/id2label.json \
-              --output-dir /app/eval_results/model \
-              --logging-dir /app/eval_results/logs \
-              --report-path /app/eval_results/eval_report.json
+              --data-path /app/results/anli_data.pickle \
+              --label-map-path /app/results/id2label.json \
+              --output-dir /app/results/model \
+              --logging-dir /app/results/logs \
+              --report-path /app/results/eval_report.json
 
       - name: Upload eval results
         uses: actions/upload-artifact@v4
