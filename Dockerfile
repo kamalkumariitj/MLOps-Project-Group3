@@ -14,6 +14,9 @@ RUN apt-get update \
 COPY requirements.txt /app/requirements.txt
 RUN pip install --upgrade pip && pip install -r /app/requirements.txt
 
+ENV HF_HOME=/app/hf_home
+RUN mkdir -p $HF_HOME && chmod -R 777 $HF_HOME
+
 ARG MODEL_NAME=roberta-base
 ENV MODEL_NAME=${MODEL_NAME}
 ARG RUN_MODE=SMALL_RUN
