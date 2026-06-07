@@ -1,95 +1,122 @@
-# ANLI Natural Language Inference with RoBERTa
+# RoBERTa ANLI Classifier
 
-**MLOps Assignment 3 — IIT Jodhpur PGD AI Program**
-**Authors:** Chaurasia Kamalkumar Lallanprasad, Solanki Bhavik Pravinbhai, Govardhan Kumar, Mahesh Om Prakash Bali
+MLOps Assignment 2 - IIT Jodhpur PGD AI Program
 
-Fine-tunes `roberta-base` on the `facebook/anli` dataset for adversarial natural language inference. This notebook builds premise/hypothesis pairs, fine-tunes a RoBERTa classification head, evaluates on validation/test splits, and logs experiments to Weights & Biases.
+## Authors
 
-**Task:** 3-way NLI classification with labels `entailment`, `neutral`, and `contradiction`.
+| Roll Number | Name |
+|---|---|
+| G25AIT2028 | Chaurasia Kamalkumar Lallanprasad |
+| G25AIT2106 | Solanki Bhavik Pravinbhai |
+| G25AIT2035 | Govardhan Kumar |
+| G25AIT2057 | Mahesh Om Prakash Bali |
 
----
+This project fine-tunes roberta-base on facebook/anli for 3-class natural language inference: entailment, neutral, contradiction.
 
-## Notebook Workflow
+## Notebook
 
-The notebook `MLOps_Assignment_3_Fine_Tuning_Classification_roberta.ipynb` runs the full pipeline end-to-end:
+Primary notebook:
 
-1. **Load dataset** — `facebook/anli` from Hugging Face Hub, including round-based splits like `train_r1`, `dev_r1`, `train_r2`, `dev_r2`, `train_r3`, `dev_r3`, `test_r1`, and `test_r2`
-2. **Data prep** — format premise/hypothesis pairs, map labels to integers, and concatenate round-specific splits for training and evaluation
-3. **Baseline** — optional TF-IDF + Logistic Regression baseline using premise/hypothesis text
-4. **Load model** — `RobertaTokenizer` + `RobertaForSequenceClassification` from Hugging Face
-5. **Fine-tune** — Hugging Face `Trainer` API with W&B experiment tracking (`report_to="wandb"`)
-6. **Evaluate** — `trainer.evaluate()` plus detailed classification metrics and misclassification analysis
-7. **Publish** — save and optionally push the fine-tuned model and tokenizer to the Hugging Face Hub
+- MLOps_Assignment_2_Fine_Tuning_Classification_roberta.ipynb
 
----
+## Current Pipeline (As Implemented)
 
-## Model
+1. Load ANLI from Hugging Face Datasets using load_dataset("facebook/anli").
+2. Build text-pair inputs in the form: premise: ... hypothesis: ...
+3. Prepare train/test sets from ANLI rounds.
+4. Run a baseline TF-IDF + Logistic Regression model.
+5. Tokenize with RobertaTokenizer and build custom Torch datasets.
+6. Fine-tune RobertaForSequenceClassification via Hugging Face Trainer.
+7. Evaluate with accuracy, weighted F1, classification report, and save eval_report.json.
+8. Optionally log metrics/artifacts to W&B and push tokenizer/model artifacts to Hugging Face Hub.
 
-**`roberta-base`**
+## Run Modes
 
-RoBERTa improves upon BERT by removing the Next Sentence Prediction (NSP) objective, training with dynamic masking, using larger mini-batches, and learning from more text. The `roberta-base` checkpoint has 12 layers, hidden size 768, 12 attention heads, and a byte-level BPE vocabulary.
+The notebook includes a dedicated run-mode key cell near the top.
 
----
+- RUN_MODE = SMALL_RUN
+- RUN_MODE = FULL_RUN
+
+Behavior:
+
+- SMALL_RUN
+	- Reduced dataset slices for fast smoke testing.
+	- Lightweight training arguments (single-epoch capped steps).
+	- W&B initialization/logging/artifact upload is skipped by design.
+- FULL_RUN
+	- Uses larger dataset configuration.
+	- Full training schedule.
+	- W&B tracking is enabled.
+
+## Key Configuration Used In Notebook
+
+Model stack:
+
+- HF model class: RobertaForSequenceClassification
+- Tokenizer: RobertaTokenizer
+- Base checkpoint: roberta-base
+- Max sequence length: 512
+
+Training arguments are mode-dependent:
+
+- SMALL_RUN
+	- num_train_epochs: 1
+	- max_steps: 80
+	- per_device_train_batch_size: 8
+	- per_device_eval_batch_size: 16
+	- learning_rate: 2e-5
+	- logging_steps: 10
+	- eval_strategy: steps
+	- eval_steps: 20
+	- save_strategy: no
+	- report_to: none
+- FULL_RUN
+	- num_train_epochs: 3
+	- per_device_train_batch_size: 10
+	- per_device_eval_batch_size: 16
+	- learning_rate: 2e-5
+	- warmup_steps: 100
+	- weight_decay: 0.01
+	- logging_steps: 50
+	- eval_strategy: epoch
+	- save_strategy: epoch
+	- report_to: wandb
 
 ## Setup
 
-### 1. Install dependencies
+1. Install dependencies:
 
-```bash
 pip install -r requirements.txt
-```
 
-**Key packages:** `transformers`, `torch`, `accelerate`, `sentencepiece`, `wandb`, `scikit-learn`, `datasets`, `huggingface_hub`, `pandas`, `numpy`
+2. Optional environment variables:
 
-### 2. Set environment variables
+- WANDB_API_KEY for Weights & Biases logging
+- HF_TOKEN for Hugging Face Hub push
 
-On macOS/Linux:
+3. Run notebook top to bottom.
 
-```bash
-export WANDB_API_KEY=<your W&B API key>
-export HF_TOKEN=<your Hugging Face token>
-```
+Important:
 
-On Windows PowerShell:
+- If you change RUN_MODE, re-run from the run-mode key cell onward.
+- If packages are newly installed in notebook kernel, re-run earlier setup cells after kernel restart.
 
-```powershell
-$env:WANDB_API_KEY="<your W&B API key>"
-$env:HF_TOKEN="<your Hugging Face token>"
-```
+## Outputs
 
-### 3. Run the notebook
+Generated by notebook execution:
 
-Open and run `MLOps_Assignment_3_Fine_Tuning_Classification_roberta.ipynb` from top to bottom. The first cell includes environment setup and cleanup logic for W&B.
+- anli_text_classification_data.pickle
+- eval_report.json
+- results/ and logs/ folders (depending on run mode and save strategy)
 
----
+## Hugging Face and W&B Notes
 
-## Training Configuration
+- The push cell currently pushes tokenizer by default; model push line is present and can be uncommented.
+- W&B summary update in the push cell is guarded so it does not fail when no active run exists.
 
-| Parameter | Value |
-|-----------|-------|
-| Model | `roberta-base` |
-| Epochs | 3 |
-| Train batch size | 10 |
-| Eval batch size | 16 |
-| Learning rate | 2e-5 |
-| Warmup steps | 100 |
-| Weight decay | 0.01 |
-| Logging steps | 50 |
-| Eval / save strategy | epoch |
-| Max sequence length | 512 |
+## Dataset
 
----
+- Hugging Face dataset: https://huggingface.co/datasets/facebook/anli
 
-## Notes
+## Base Model
 
-- The notebook uses the Hugging Face `datasets` library to load `facebook/anli`.
-- The task is adversarial natural language inference, with label mapping `0 -> entailment`, `1 -> neutral`, `2 -> contradiction`.
-- The notebook concatenates round-specific train/dev splits for a single training and validation dataset when appropriate.
-
----
-
-## Links
-
-- **Dataset:** https://huggingface.co/datasets/facebook/anli
-- **Transformers:** https://huggingface.co/docs/transformers/
-- **Weights & Biases:** https://wandb.ai/
+- roberta-base: https://huggingface.co/roberta-base
