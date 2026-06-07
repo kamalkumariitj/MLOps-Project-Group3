@@ -1,0 +1,66 @@
+name: MLOps Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  workflow_dispatch:
+    inputs:
+      push_to_hub:
+        description: "Push model to Hugging Face Hub"
+        type: boolean
+        default: true
+      hf_repo:
+        description: "Hugging Face repo id (e.g. your-username/distilbert-reviews-genres)"
+        type: string
+        default: "kamalchaurasia-iitj/mlops-anli-classifier-roberta"
+
+jobs:
+  pipeline:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Debug - list repo root
+        run: ls -la
+
+      - name: Build Docker image
+        run: docker build -t mlops .
+
+      - name: Run full pipeline
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
+        run: |
+          mkdir -p results
+          chmod -R 777 results
+
+          PUSH_FLAG="--no-push-to-hub"
+          HF_REPO_ID_VALUE=""
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.event.inputs.push_to_hub }}" = "true" ] && [ -n "${{ github.event.inputs.hf_repo }}" ]; then
+            PUSH_FLAG="--push-to-hub"
+            HF_REPO_ID_VALUE="${{ github.event.inputs.hf_repo }}"
+          fi
+
+          docker run --rm \
+            --user root \
+            -e HF_TOKEN="${HF_TOKEN}" \
+            -e WANDB_API_KEY="${WANDB_API_KEY}" \
+            -e HF_REPO_ID="${HF_REPO_ID_VALUE}" \
+            -v "${{ github.workspace }}:/app" \
+            mlops python main.py \
+              --run-mode SMALL_RUN \
+              --disable-wandb \
+              ${PUSH_FLAG} \
+              --data-path /app/results/anli_text_classification_data.pickle \
+              --label-map-path /app/id2label.json \
+              --output-dir /app/results/model \
+              --logging-dir /app/results/logs \
+              --report-path /app/results/eval_report.json
+
+      - name: Upload eval results
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-results
+          path: eval_results/
+          retention-days: 30
