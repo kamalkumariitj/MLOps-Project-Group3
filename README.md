@@ -36,9 +36,9 @@ This repository also includes a Python script-based pipeline for non-notebook ru
 
 `pip install -r requirements.txt`
 
-2. Optional: create `.env` for configuration overrides (for example `RUN_MODE`, `EXPERIMENT_VERSION`, `ENABLE_WANDB`, `HF_TOKEN`, `HF_REPO_ID`).
+2. To run locally create `.env` for secrets (for example `WANDB_API_KEY`, `HF_TOKEN`).
 
-3. Run all stages:
+4. Run all stages:
 
 `python main.py --run-mode FULL_RUN --stage all`
 
