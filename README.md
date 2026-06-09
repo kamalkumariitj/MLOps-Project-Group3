@@ -17,7 +17,7 @@ This project fine-tunes roberta-base on facebook/anli for 3-class natural langua
 
 Primary notebook:
 
-- MLOps_Assignment_3_Fine_Tuning_Classification_roberta.ipynb
+- MLOps_Assignment_3_Fine_Tuning_Classification_roberta_V2.ipynb
 
 ## Python Program (Script Pipeline)
 
@@ -51,6 +51,67 @@ Run only one stage:
 - `python main.py --stage data`
 - `python main.py --stage train`
 - `python main.py --stage eval`
+
+## Run with Docker
+
+Build image:
+
+`docker build -t mlops-assignment3-group3 .`
+
+Run container with Dockerfile default command:
+
+`docker run --rm mlops-assignment3-group3`
+
+Run full command (same pattern used in CI) and persist outputs locally:
+
+```bash
+mkdir -p results
+docker run --rm \
+  --user root \
+  -e HF_TOKEN="$HF_TOKEN" \
+  -e WANDB_API_KEY="$WANDB_API_KEY" \
+  -v "$(pwd):/app" \
+  mlops-assignment3-group3 python main.py \
+    --run-mode SMALL_RUN \
+    --disable-wandb \
+    --no-push-to-hub \
+    --data-path /app/results/anli_text_classification_data.pickle \
+    --label-map-path /app/id2label.json \
+    --output-dir /app/results/model \
+    --logging-dir /app/results/logs \
+    --report-path /app/results/eval_report.json
+```
+
+## GitHub Actions Pipeline (`mlops-pipeline.yml`)
+
+Workflow file: `.github/workflows/mlops-pipeline.yml`
+
+Triggers:
+
+- Push to `main` or `develop`
+- Manual run from Actions tab (`workflow_dispatch`)
+
+Required repository secrets:
+
+- `DOCKERHUB_USERNAME`
+- `DOCKERHUB_TOKEN`
+- `HF_TOKEN`
+- `WANDB_API_KEY`
+
+What this workflow does:
+
+1. Checks out the repo.
+2. Builds Docker image.
+3. Logs in to Docker Hub and pushes image tags:
+   - `latest`
+   - `${{ github.sha }}`
+4. Runs the pipeline inside Docker using `main.py` in `SMALL_RUN` mode.
+5. Uploads evaluation artifacts.
+
+Manual run options in GitHub Actions:
+
+- `push_to_hub` (`true/false`)
+- `hf_repo` (Hugging Face repo id)
 
 ## Current Pipeline (As Implemented)
 
