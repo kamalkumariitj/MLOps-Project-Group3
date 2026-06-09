@@ -17,7 +17,7 @@ This project fine-tunes roberta-base on facebook/anli for 3-class natural langua
 
 Primary notebook:
 
-- MLOps_Assignment_3_Fine_Tuning_Classification_roberta_V2.ipynb
+- MLOps_Assignment_3_Fine_Tuning_Classification_roberta.ipynb
 
 ## Python Program (Script Pipeline)
 
