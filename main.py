@@ -111,5 +111,5 @@ if __name__ == "__main__":
     main()
 
 
-
+# main command to run locally
 #     python3 main.py --run-mode SMALL_RUN --disable-wandb --no-push-to-hub
