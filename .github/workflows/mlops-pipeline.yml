@@ -74,6 +74,16 @@ jobs:
               --logging-dir /app/results/logs \
               --report-path /app/results/eval_report.json
 
+      - name: Run inference mode
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          docker run --rm \
+            -e APP_MODE=inference \
+            -e HF_TOKEN="${HF_TOKEN}" \
+            -e INPUT_TEXT="premise: A man is playing guitar hypothesis: A person is making music" \
+            mlops
+
       - name: Upload eval results
         uses: actions/upload-artifact@v4
         with:
