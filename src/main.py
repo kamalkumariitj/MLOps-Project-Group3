@@ -12,12 +12,17 @@ from config import load_config
 os.environ["REQUESTS_CA_BUNDLE"] = certifi.where()
 os.environ["SSL_CERT_FILE"] = certifi.where()
 
+
 def parse_args() -> argparse.Namespace:
     cfg = load_config()
     parser = argparse.ArgumentParser(description="Entry program for ANLI pipeline: data -> train -> eval.")
     parser.add_argument("--mode", choices=["train", "inference"], default="train")
     parser.add_argument("--run-mode", choices=["SMALL_RUN", "FULL_RUN"], default=cfg.run_mode)
-    parser.add_argument("--experiment-version", choices=sorted(cfg.experiment_configs.keys()), default=cfg.experiment_version)
+    parser.add_argument(
+        "--experiment-version",
+        choices=sorted(cfg.experiment_configs.keys()),
+        default=cfg.experiment_version,
+    )
     parser.add_argument("--stage", choices=["all", "data", "train", "eval"], default="all")
     parser.add_argument("--python-bin", default=sys.executable)
 
@@ -136,7 +141,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-
-
-#     python3 src/main.py --run-mode SMALL_RUN --disable-wandb --no-push-to-hub
