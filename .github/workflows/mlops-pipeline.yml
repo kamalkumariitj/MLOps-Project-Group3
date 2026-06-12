@@ -13,10 +13,16 @@ on:
         description: "Hugging Face repo id (e.g. your-username/distilbert-reviews-genres)"
         type: string
         default: "kamalchaurasia-iitj/mlops-anli-classifier-roberta"
+      hf_model_name:
+        description: "HF model name for Docker build arg"
+        type: string
+        default: "kamalchaurasia-iitj/mlops-anli-classifier-roberta"
 
 jobs:
   pipeline:
     runs-on: ubuntu-latest
+    env:
+      HF_MODEL_NAME: ${{ github.event.inputs.hf_model_name || 'kamalchaurasia-iitj/mlops-anli-classifier-roberta' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -25,7 +31,7 @@ jobs:
         run: ls -la
 
       - name: Build Docker image
-        run: docker build -t mlops .
+        run: docker build --build-arg HF_MODEL_NAME="${HF_MODEL_NAME}" -t mlops .
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
@@ -39,6 +45,8 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
+          build-args: |
+            HF_MODEL_NAME=${{ env.HF_MODEL_NAME }}
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/mlops-assignment3-group3:latest
             ${{ secrets.DOCKERHUB_USERNAME }}/mlops-assignment3-group3:${{ github.sha }}
