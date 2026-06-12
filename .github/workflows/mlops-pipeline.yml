@@ -1,4 +1,4 @@
-name: MLOps Pipeline
+name: MLOps Train Pipeline
 
 on:
   push:
@@ -43,7 +43,7 @@ jobs:
             ${{ secrets.DOCKERHUB_USERNAME }}/mlops-assignment3-group3:latest
             ${{ secrets.DOCKERHUB_USERNAME }}/mlops-assignment3-group3:${{ github.sha }}
           
-      - name: Run full pipeline
+      - name: Run train pipeline
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
@@ -73,16 +73,6 @@ jobs:
               --output-dir /app/results/model \
               --logging-dir /app/results/logs \
               --report-path /app/results/eval_report.json
-
-      - name: Run inference mode
-        env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        run: |
-          docker run --rm \
-            -e APP_MODE=inference \
-            -e HF_TOKEN="${HF_TOKEN}" \
-            -e INPUT_TEXT="premise: A man is playing guitar hypothesis: A person is making music" \
-            mlops
 
       - name: Upload eval results
         uses: actions/upload-artifact@v4
