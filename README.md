@@ -53,7 +53,7 @@ Run only one stage:
 - `python src/main.py --stage train`
 - `python src/main.py --stage eval`
 
-Run inference mode:
+## Run inference mode:
 
 `python src/main.py --mode inference --input-text "premise: A man is playing guitar hypothesis: A person is making music"`
 
