@@ -66,13 +66,19 @@ Build image:
 
 `docker build -t mlops-assignment3-group3 .`
 
-Run container with Dockerfile default command:
+Run Docker in inference mode:
 
-`docker run --rm -e INPUT_TEXT="premise: A man is playing guitar hypothesis: A person is making music" mlops-assignment3-group3`
+`docker run --rm -e APP_MODE=inference -e INPUT_TEXT="premise: A man is playing guitar hypothesis: A person is making music" mlops-assignment3-group3`
 
-Default Docker mode is `inference`. To run training pipeline mode instead:
+Default Docker mode is also `inference`, so `APP_MODE=inference` is optional.
+
+Run Docker in train mode:
 
 `docker run --rm -e APP_MODE=train mlops-assignment3-group3`
+
+Run Docker in train mode with explicit run mode:
+
+`docker run --rm -e APP_MODE=train -e RUN_MODE=SMALL_RUN mlops-assignment3-group3`
 
 Run full command (same pattern used in CI) and persist outputs locally:
 
