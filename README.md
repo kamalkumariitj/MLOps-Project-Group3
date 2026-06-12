@@ -150,14 +150,12 @@ What this workflow does:
 
 ## Current Pipeline (As Implemented)
 
-1. Load ANLI from Hugging Face Datasets using load_dataset("facebook/anli").
-2. Build text-pair inputs in the form: premise: ... hypothesis: ...
-3. Prepare train/test sets from ANLI rounds.
-4. Run a baseline TF-IDF + Logistic Regression model.
-5. Tokenize with RobertaTokenizer and build custom Torch datasets.
-6. Fine-tune RobertaForSequenceClassification via Hugging Face Trainer.
-7. Evaluate with accuracy, weighted F1, classification report, and save eval_report.json.
-8. Optionally log metrics/artifacts to W&B and push tokenizer/model artifacts to Hugging Face Hub.
+1. Trigger `inference.yml` manually from GitHub Actions (`workflow_dispatch`).
+2. Provide `input_text` and optionally `hf_model_name` (default: `kamalchaurasia-iitj/mlops-anli-classifier-roberta`).
+3. Build Docker image using `HF_MODEL_NAME` build argument.
+4. Log in to Docker Hub and push image tags (`latest` and `${{ github.sha }}`).
+5. Run Docker container in inference mode (`APP_MODE=inference`) with `INPUT_TEXT` and `HF_TOKEN`.
+6. Produce inference output as JSON with predicted label and class scores.
 
 ## Run Modes
 
@@ -166,7 +164,7 @@ The notebook includes a dedicated run-mode key cell near the top.
 - RUN_MODE = SMALL_RUN
 - RUN_MODE = FULL_RUN
 
-Behavior:
+Behavior: (Optional for inference mode, useful only for train mode)
 
 - SMALL_RUN
 	- Reduced dataset slices for fast smoke testing.
