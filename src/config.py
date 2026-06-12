@@ -49,6 +49,7 @@ class AppConfig:
     label_map_path: str
 
     model_name: str
+    inference_model_name: str
     experiment_version: str
     experiment_configs: Dict[str, "ExperimentConfig"]
     max_length: int
@@ -135,8 +136,9 @@ def load_config(env_file: str = ".env") -> AppConfig:
         train_max_rows=_env_int("TRAIN_MAX_ROWS", 10000),
         test_max_rows=_env_int("TEST_MAX_ROWS", 2000),
         data_pickle_path=_env_str("DATA_PICKLE_PATH", "./results/anli_text_classification_data.pickle"),
-        label_map_path=_env_str("LABEL_MAP_PATH", "id2label.json"),
+        label_map_path=_env_str("LABEL_MAP_PATH", "./results/id2label.json"),
         model_name=_env_str("MODEL_NAME", "roberta-base"),
+        inference_model_name="kamalchaurasia-iitj/mlops-anli-classifier-roberta",
         experiment_version=experiment_version,
         experiment_configs=experiment_configs,
         max_length=_env_int("MAX_LENGTH", 512),
