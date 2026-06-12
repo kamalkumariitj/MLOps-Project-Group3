@@ -1,7 +1,8 @@
 import argparse
+import os
 import subprocess
 import sys
-import os,certifi
+import certifi
 
 from pathlib import Path
 from typing import List
@@ -14,6 +15,7 @@ os.environ["SSL_CERT_FILE"] = certifi.where()
 def parse_args() -> argparse.Namespace:
     cfg = load_config()
     parser = argparse.ArgumentParser(description="Entry program for ANLI pipeline: data -> train -> eval.")
+    parser.add_argument("--mode", choices=["train", "inference"], default="train")
     parser.add_argument("--run-mode", choices=["SMALL_RUN", "FULL_RUN"], default=cfg.run_mode)
     parser.add_argument("--experiment-version", choices=sorted(cfg.experiment_configs.keys()), default=cfg.experiment_version)
     parser.add_argument("--stage", choices=["all", "data", "train", "eval"], default="all")
@@ -32,6 +34,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--disable-wandb", dest="enable_wandb", action="store_false")
     parser.add_argument("--push-to-hub", dest="push_to_hub", action="store_true", default=None)
     parser.add_argument("--no-push-to-hub", dest="push_to_hub", action="store_false")
+
+    parser.add_argument("--input-text", default=os.getenv("INPUT_TEXT"))
+    parser.add_argument("--inference-hf-token", default=cfg.hf_token)
+    parser.add_argument("--inference-label-map-path", default=cfg.label_map_path)
+    parser.add_argument("--inference-max-length", type=int, default=cfg.max_length)
+    parser.add_argument("--inference-device", choices=["auto", "cpu", "cuda"], default="auto")
     return parser.parse_args()
 
 
@@ -44,6 +52,25 @@ def run_step(name: str, command: List[str]) -> None:
 def main() -> None:
     args = parse_args()
     root = Path(__file__).resolve().parent
+
+    if args.mode == "inference":
+        inference_cmd = [
+            args.python_bin,
+            str(root / "inference.py"),
+            "--max-length",
+            str(args.inference_max_length),
+            "--device",
+            args.inference_device,
+        ]
+        if args.inference_label_map_path:
+            inference_cmd.extend(["--label-map-path", args.inference_label_map_path])
+        if args.input_text:
+            inference_cmd.extend(["--input-text", args.input_text])
+        if args.inference_hf_token:
+            inference_cmd.extend(["--hf-token", args.inference_hf_token])
+        run_step("inference", inference_cmd)
+        print("\nPipeline execution finished.")
+        return
 
     run_data = args.stage in {"all", "data"}
     run_train = args.stage in {"all", "train"}
@@ -111,5 +138,5 @@ if __name__ == "__main__":
     main()
 
 
-# main command to run locally
-#     python3 main.py --run-mode SMALL_RUN --disable-wandb --no-push-to-hub
+
+#     python3 src/main.py --run-mode SMALL_RUN --disable-wandb --no-push-to-hub
