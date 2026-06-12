@@ -21,7 +21,9 @@ ARG MODEL_NAME=roberta-base
 ENV MODEL_NAME=${MODEL_NAME}
 ARG RUN_MODE=SMALL_RUN
 ENV RUN_MODE=${RUN_MODE}
+ARG APP_MODE=train
+ENV APP_MODE=${APP_MODE}
 
-COPY config.py data.py train.py eval.py utils.py main.py /app/
+COPY src /app/src
 
-CMD ["sh", "-c", "python main.py --run-mode \"${RUN_MODE}\" --disable-wandb --no-push-to-hub"]
+CMD ["sh", "-c", "python src/main.py --mode \"${APP_MODE}\" --run-mode \"${RUN_MODE}\" --disable-wandb --no-push-to-hub"]
