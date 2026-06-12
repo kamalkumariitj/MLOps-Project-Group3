@@ -7,6 +7,8 @@ import torch
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 from config import load_config
 
+ANLI_LABELS = ["entailment", "neutral", "contradiction"]
+
 
 def parse_args() -> argparse.Namespace:
     cfg = load_config()
@@ -36,6 +38,10 @@ def load_label_map(path: str | None) -> dict[int, str]:
     return {int(k): str(v) for k, v in payload.items()}
 
 
+def labels_are_placeholders(id2label: dict[int, str]) -> bool:
+    return bool(id2label) and all(str(v).startswith("LABEL_") for v in id2label.values())
+
+
 def main() -> None:
     args = parse_args()
     cfg = load_config()
@@ -62,9 +68,18 @@ def main() -> None:
 
     id2label = {int(k): str(v) for k, v in (getattr(model.config, "id2label", {}) or {}).items()}
     file_id2label = load_label_map(args.label_map_path)
-    config_has_placeholder_labels = id2label and all(str(v).startswith("LABEL_") for v in id2label.values())
-    if file_id2label and (not id2label or config_has_placeholder_labels):
+    if file_id2label and (not id2label or labels_are_placeholders(id2label)):
         id2label = file_id2label
+
+    if not id2label or labels_are_placeholders(id2label):
+        label2id = {str(k): int(v) for k, v in (getattr(model.config, "label2id", {}) or {}).items()}
+        label2id_has_real_labels = label2id and any(not name.startswith("LABEL_") for name in label2id.keys())
+        if label2id_has_real_labels:
+            id2label = {idx: name for name, idx in label2id.items()}
+
+    if (not id2label or labels_are_placeholders(id2label)) and probs.shape[0] == len(ANLI_LABELS):
+        id2label = {i: label for i, label in enumerate(ANLI_LABELS)}
+
     pred_idx = int(torch.argmax(probs).item())
     pred_label = id2label.get(pred_idx, f"LABEL_{pred_idx}")
     scores = {id2label.get(i, f"LABEL_{i}"): float(probs[i].item()) for i in range(probs.shape[0])}
