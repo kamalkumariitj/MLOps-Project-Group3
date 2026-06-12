@@ -23,12 +23,13 @@ Primary notebook:
 
 This repository also includes a Python script-based pipeline for non-notebook runs:
 
-- `main.py`: orchestrates pipeline stages (`data -> train -> eval`)
-- `data.py`: loads `facebook/anli`, cleans data, encodes labels, saves processed dataset
-- `train.py`: tokenizes text pairs, fine-tunes `roberta-base`, saves model/tokenizer/metrics
-- `eval.py`: evaluates saved model and writes `eval_report.json`
-- `config.py`: central configuration loader from environment variables / `.env`
-- `utils.py`: shared dataset, cleaning, metrics, and seed utilities
+- `src/main.py`: orchestrates pipeline stages (`data -> train -> eval`) and inference mode
+- `src/data.py`: loads `facebook/anli`, cleans data, encodes labels, saves processed dataset
+- `src/train.py`: tokenizes text pairs, fine-tunes `roberta-base`, saves model/tokenizer/metrics
+- `src/eval.py`: evaluates saved model and writes `eval_report.json`
+- `src/inference.py`: runs single-text inference against the configured Hugging Face model
+- `src/config.py`: central configuration loader from environment variables / `.env`
+- `src/utils.py`: shared dataset, cleaning, metrics, and seed utilities
 
 ### Run the Python Pipeline
 
@@ -40,17 +41,24 @@ This repository also includes a Python script-based pipeline for non-notebook ru
 
 4. Run all stages:
 
-`python main.py --run-mode FULL_RUN --stage all`
+`python src/main.py --run-mode FULL_RUN --stage all`
 
 Quick smoke run:
 
-`python main.py --run-mode SMALL_RUN --stage all --disable-wandb --no-push-to-hub`
+`python src/main.py --run-mode SMALL_RUN --stage all --disable-wandb --no-push-to-hub`
 
 Run only one stage:
 
-- `python main.py --stage data`
-- `python main.py --stage train`
-- `python main.py --stage eval`
+- `python src/main.py --stage data`
+- `python src/main.py --stage train`
+- `python src/main.py --stage eval`
+
+Run inference mode:
+
+`python src/main.py --mode inference --input-text "premise: A man is playing guitar hypothesis: A person is making music"`
+
+Inference mode uses the model configured in `src/config.py`:
+`kamalchaurasia-iitj/mlops-anli-classifier-roberta`.
 
 ## Run with Docker
 
@@ -60,7 +68,11 @@ Build image:
 
 Run container with Dockerfile default command:
 
-`docker run --rm mlops-assignment3-group3`
+`docker run --rm -e INPUT_TEXT="premise: A man is playing guitar hypothesis: A person is making music" mlops-assignment3-group3`
+
+Default Docker mode is `inference`. To run training pipeline mode instead:
+
+`docker run --rm -e APP_MODE=train mlops-assignment3-group3`
 
 Run full command (same pattern used in CI) and persist outputs locally:
 
@@ -68,10 +80,8 @@ Run full command (same pattern used in CI) and persist outputs locally:
 mkdir -p results
 docker run --rm \
   --user root \
-  -e HF_TOKEN="$HF_TOKEN" \
-  -e WANDB_API_KEY="$WANDB_API_KEY" \
   -v "$(pwd):/app" \
-  mlops-assignment3-group3 python main.py \
+  mlops-assignment3-group3 python src/main.py \
     --run-mode SMALL_RUN \
     --disable-wandb \
     --no-push-to-hub \
@@ -105,7 +115,7 @@ What this workflow does:
 3. Logs in to Docker Hub and pushes image tags:
    - `latest`
    - `${{ github.sha }}`
-4. Runs the pipeline inside Docker using `main.py` in `SMALL_RUN` mode.
+4. Runs the pipeline inside Docker using `src/main.py` in `SMALL_RUN` mode.
 5. Uploads evaluation artifacts.
 
 Manual run options in GitHub Actions:
