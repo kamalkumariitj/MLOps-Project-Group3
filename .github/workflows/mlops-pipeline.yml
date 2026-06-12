@@ -1,31 +1,90 @@
-FROM python:3.11-slim
+name: MLOps Train Pipeline
 
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1
+on:
+  push:
+    branches: [main, develop]
+  workflow_dispatch:
+    inputs:
+      push_to_hub:
+        description: "Push model to Hugging Face Hub"
+        type: boolean
+        default: true
+      hf_repo:
+        description: "Hugging Face repo id (e.g. your-username/distilbert-reviews-genres)"
+        type: string
+        default: "kamalchaurasia-iitj/mlops-anli-classifier-roberta"
+      hf_model_name:
+        description: "HF model name for Docker build arg"
+        type: string
+        default: "kamalchaurasia-iitj/mlops-anli-classifier-roberta"
 
-WORKDIR /app
+jobs:
+  pipeline:
+    runs-on: ubuntu-latest
+    env:
+      HF_MODEL_NAME: ${{ github.event.inputs.hf_model_name || 'kamalchaurasia-iitj/mlops-anli-classifier-roberta' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates \
-    && update-ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+      - name: Debug - list repo root
+        run: ls -la
 
-COPY requirements.txt /app/requirements.txt
-RUN pip install --upgrade pip && pip install -r /app/requirements.txt
+      - name: Build Docker image
+        run: docker build --build-arg HF_MODEL_NAME="${HF_MODEL_NAME}" -t mlops .
 
-ENV HF_HOME=/app/hf_home
-RUN mkdir -p $HF_HOME && chmod -R 777 $HF_HOME
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-ARG HF_MODEL_NAME=kamalchaurasia-iitj/mlops-anli-classifier-roberta
-ENV HF_MODEL_NAME=${HF_MODEL_NAME}
-ARG HF_FALLBACK_MODEL_NAME=roberta-base
-ENV HF_FALLBACK_MODEL_NAME=${HF_FALLBACK_MODEL_NAME}
-ARG RUN_MODE=SMALL_RUN
-ENV RUN_MODE=${RUN_MODE}
-ARG APP_MODE=inference
-ENV APP_MODE=${APP_MODE}
+      - name: Build and Push Image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          build-args: |
+            HF_MODEL_NAME=${{ env.HF_MODEL_NAME }}
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/mlops-assignment3-group3:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/mlops-assignment3-group3:${{ github.sha }}
+          
+      - name: Run train pipeline
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
+        run: |
+          mkdir -p results
+          chmod -R 777 results
 
-COPY src /app/src
+          PUSH_FLAG="--no-push-to-hub"
+          HF_REPO_ID_VALUE=""
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.event.inputs.push_to_hub }}" = "true" ] && [ -n "${{ github.event.inputs.hf_repo }}" ]; then
+            PUSH_FLAG="--push-to-hub"
+            HF_REPO_ID_VALUE="${{ github.event.inputs.hf_repo }}"
+          fi
 
-CMD ["sh", "-c", "python src/main.py --mode \"${APP_MODE}\" --run-mode \"${RUN_MODE}\" --disable-wandb --no-push-to-hub"]
+          docker run --rm \
+            --user root \
+            -e HF_TOKEN="${HF_TOKEN}" \
+            -e WANDB_API_KEY="${WANDB_API_KEY}" \
+            -e HF_REPO_ID="${HF_REPO_ID_VALUE}" \
+            -v "${{ github.workspace }}:/app" \
+            mlops python src/main.py \
+              --run-mode SMALL_RUN \
+              --disable-wandb \
+              ${PUSH_FLAG} \
+              --data-path /app/results/anli_text_classification_data.pickle \
+              --label-map-path /app/id2label.json \
+              --output-dir /app/results/model \
+              --logging-dir /app/results/logs \
+              --report-path /app/results/eval_report.json
+
+      - name: Upload eval results
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-results
+          path: eval_results/
+          retention-days: 30
