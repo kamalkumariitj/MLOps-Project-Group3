@@ -50,6 +50,7 @@ class AppConfig:
 
     model_name: str
     inference_model_name: str
+    inference_fallback_model_name: str
     experiment_version: str
     experiment_configs: Dict[str, "ExperimentConfig"]
     max_length: int
@@ -138,7 +139,8 @@ def load_config(env_file: str = ".env") -> AppConfig:
         data_pickle_path=_env_str("DATA_PICKLE_PATH", "./results/anli_text_classification_data.pickle"),
         label_map_path=_env_str("LABEL_MAP_PATH", "./results/id2label.json"),
         model_name=_env_str("MODEL_NAME", "roberta-base"),
-        inference_model_name="kamalchaurasia-iitj/mlops-anli-classifier-roberta",
+        inference_model_name=_env_str("HF_MODEL_NAME", "kamalchaurasia-iitj/mlops-anli-classifier-roberta"),
+        inference_fallback_model_name=_env_str("HF_FALLBACK_MODEL_NAME", "roberta-base"),
         experiment_version=experiment_version,
         experiment_configs=experiment_configs,
         max_length=_env_int("MAX_LENGTH", 512),
