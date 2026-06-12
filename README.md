@@ -64,7 +64,13 @@ Inference mode uses the model configured in `src/config.py`:
 
 Build image:
 
-`docker build -t mlops-assignment3-group3 .`
+`docker build --build-arg HF_MODEL_NAME=kamalchaurasia-iitj/mlops-anli-classifier-roberta -t mlops-assignment3-group3 .`
+
+Build image with a custom Hugging Face model:
+
+`docker build --build-arg HF_MODEL_NAME=your-username/your-model -t mlops-assignment3-group3 .`
+
+Default HF model is `kamalchaurasia-iitj/mlops-anli-classifier-roberta`, and fallback model is `roberta-base`.
 
 Run Docker in inference mode:
 
@@ -128,6 +134,7 @@ Manual run options in GitHub Actions:
 
 - `push_to_hub` (`true/false`)
 - `hf_repo` (Hugging Face repo id)
+- `hf_model_name` (Docker build arg for inference model, default `kamalchaurasia-iitj/mlops-anli-classifier-roberta`)
 
 ## Current Pipeline (As Implemented)
 
