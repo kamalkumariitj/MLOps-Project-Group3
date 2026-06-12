@@ -2,7 +2,7 @@ name: MLOps Pipeline
 
 on:
   push:
-    branches: [main,develop]
+    branches: [main, develop]
   workflow_dispatch:
     inputs:
       push_to_hub:
@@ -64,7 +64,7 @@ jobs:
             -e WANDB_API_KEY="${WANDB_API_KEY}" \
             -e HF_REPO_ID="${HF_REPO_ID_VALUE}" \
             -v "${{ github.workspace }}:/app" \
-            mlops python main.py \
+            mlops python src/main.py \
               --run-mode SMALL_RUN \
               --disable-wandb \
               ${PUSH_FLAG} \
