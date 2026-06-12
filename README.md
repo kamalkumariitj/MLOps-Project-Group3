@@ -57,6 +57,8 @@ Run inference mode:
 
 `python src/main.py --mode inference --input-text "premise: A man is playing guitar hypothesis: A person is making music"`
 
+Optional (inference accepts it, but does not use it): `--run-mode SMALL_RUN|FULL_RUN`
+
 Inference mode uses the model configured in `src/config.py`:
 `kamalchaurasia-iitj/mlops-anli-classifier-roberta`.
 
@@ -104,37 +106,47 @@ docker run --rm \
     --report-path /app/results/eval_report.json
 ```
 
-## GitHub Actions Pipeline (`mlops-pipeline.yml`)
+## GitHub Actions CI (`ci.yml`)
 
-Workflow file: `.github/workflows/mlops-pipeline.yml`
+Workflow file: `.github/workflows/ci.yml`
 
 Triggers:
 
-- Push to `main` or `develop`
-- Manual run from Actions tab (`workflow_dispatch`)
+- Push to `develop`
+- Pull request targeting `main`
+
+What this workflow does:
+
+1. Checks out the repository.
+2. Sets up Python `3.11`.
+3. Installs dependencies and `flake8`.
+4. Runs lint checks on `src/` with max line length `120`.
+
+## GitHub Actions Inference Pipeline (`inference.yml`)
+
+Workflow file: `.github/workflows/inference.yml`
+
+Trigger:
+
+- Manual run only (`workflow_dispatch`)
+
+Manual run inputs:
+
+- `input_text` (text for inference)
+- `hf_model_name` (HF model name used as Docker build arg, default `kamalchaurasia-iitj/mlops-anli-classifier-roberta`)
 
 Required repository secrets:
 
 - `DOCKERHUB_USERNAME`
 - `DOCKERHUB_TOKEN`
 - `HF_TOKEN`
-- `WANDB_API_KEY`
 
 What this workflow does:
 
-1. Checks out the repo.
-2. Builds Docker image.
-3. Logs in to Docker Hub and pushes image tags:
-   - `latest`
-   - `${{ github.sha }}`
-4. Runs the pipeline inside Docker using `src/main.py` in `SMALL_RUN` mode.
-5. Uploads evaluation artifacts.
-
-Manual run options in GitHub Actions:
-
-- `push_to_hub` (`true/false`)
-- `hf_repo` (Hugging Face repo id)
-- `hf_model_name` (Docker build arg for inference model, default `kamalchaurasia-iitj/mlops-anli-classifier-roberta`)
+1. Checks out the repository.
+2. Builds Docker image with `HF_MODEL_NAME`.
+3. Logs in and pushes Docker image to Docker Hub.
+4. Runs Docker in inference mode using the provided `input_text`.
 
 ## Current Pipeline (As Implemented)
 
@@ -164,6 +176,12 @@ Behavior:
 	- Uses larger dataset configuration.
 	- Full training schedule.
 	- W&B tracking is enabled.
+
+Script run modes:
+
+- `--mode train` (default): runs data/train/eval flow, use `--run-mode SMALL_RUN|FULL_RUN`.
+- `--mode inference`: runs single-text inference flow.
+- In inference flow, `--run-mode` is optional and effectively ignored.
 
 ## Key Configuration Used In Notebook
 
