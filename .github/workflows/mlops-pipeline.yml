@@ -1,8 +1,6 @@
 name: MLOps Train Pipeline
 
 on:
-  push:
-    branches: [main, develop]
   workflow_dispatch:
     inputs:
       push_to_hub:
