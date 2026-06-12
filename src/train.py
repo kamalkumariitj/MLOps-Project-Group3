@@ -20,7 +20,11 @@ def parse_args() -> argparse.Namespace:
     cfg = load_config()
     parser = argparse.ArgumentParser(description="Train a Hugging Face sequence-classification model.")
     parser.add_argument("--run-mode", choices=["SMALL_RUN", "FULL_RUN"], default=cfg.run_mode)
-    parser.add_argument("--experiment-version", choices=sorted(cfg.experiment_configs.keys()), default=cfg.experiment_version)
+    parser.add_argument(
+        "--experiment-version",
+        choices=sorted(cfg.experiment_configs.keys()),
+        default=cfg.experiment_version,
+    )
     parser.add_argument("--data-path", default=cfg.data_pickle_path)
     parser.add_argument("--model-name", default=cfg.model_name)
     parser.add_argument("--max-length", type=int, default=cfg.max_length)
@@ -214,7 +218,10 @@ def main() -> None:
 
     if args.push_to_hub:
         if not args.hf_repo_id:
-            raise ValueError("HF repository id is required when push_to_hub is enabled. Set HF_REPO_ID in config/.env or pass --hf-repo-id.")
+            raise ValueError(
+                "HF repository id is required when push_to_hub is enabled. "
+                "Set HF_REPO_ID in config/.env or pass --hf-repo-id."
+            )
         from huggingface_hub import login
 
         if args.hf_token:
