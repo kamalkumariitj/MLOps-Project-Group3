@@ -17,11 +17,15 @@ RUN pip install --upgrade pip && pip install -r /app/requirements.txt
 ENV HF_HOME=/app/hf_home
 RUN mkdir -p $HF_HOME && chmod -R 777 $HF_HOME
 
-ARG MODEL_NAME=roberta-base
-ENV MODEL_NAME=${MODEL_NAME}
+ARG HF_MODEL_NAME=kamalchaurasia-iitj/mlops-anli-classifier-roberta
+ENV HF_MODEL_NAME=${HF_MODEL_NAME}
+ARG HF_FALLBACK_MODEL_NAME=roberta-base
+ENV HF_FALLBACK_MODEL_NAME=${HF_FALLBACK_MODEL_NAME}
 ARG RUN_MODE=SMALL_RUN
 ENV RUN_MODE=${RUN_MODE}
+ARG APP_MODE=inference
+ENV APP_MODE=${APP_MODE}
 
-COPY config.py data.py train.py eval.py utils.py main.py /app/
+COPY src /app/src
 
-CMD ["sh", "-c", "python main.py --run-mode \"${RUN_MODE}\" --disable-wandb --no-push-to-hub"]
+CMD ["sh", "-c", "python src/main.py --mode \"${APP_MODE}\" --run-mode \"${RUN_MODE}\" --disable-wandb --no-push-to-hub"]

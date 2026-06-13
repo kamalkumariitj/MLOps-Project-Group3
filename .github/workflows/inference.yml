@@ -1,0 +1,64 @@
+name: MLOps Inference Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  workflow_dispatch:
+    inputs:
+      input_text:
+        description: "Inference input text"
+        type: string
+        default: "premise: A man is playing guitar hypothesis: A person is making music"
+      hf_model_name:
+        description: "HF model name for Docker build arg"
+        type: string
+        default: "kamalchaurasia-iitj/mlops-anli-classifier-roberta"
+
+jobs:
+  inference:
+    runs-on: ubuntu-latest
+    env:
+      HF_MODEL_NAME: ${{ github.event.inputs.hf_model_name || 'kamalchaurasia-iitj/mlops-anli-classifier-roberta' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Debug - list repo root
+        run: ls -la
+
+      - name: Build Docker image
+        run: docker build --build-arg HF_MODEL_NAME="${HF_MODEL_NAME}" -t mlops .
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and Push Image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          build-args: |
+            HF_MODEL_NAME=${{ env.HF_MODEL_NAME }}
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/mlops-assignment3-group3:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/mlops-assignment3-group3:${{ github.sha }}
+
+      - name: Run inference mode
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          INPUT_TEXT: ${{ github.event.inputs.input_text }}
+        run: |
+          if [ -z "${INPUT_TEXT}" ]; then
+            echo "::error::INPUT_TEXT is empty. Provide workflow input_text."
+            exit 1
+          fi
+
+          docker run --rm \
+            -e APP_MODE=inference \
+            -e HF_TOKEN="${HF_TOKEN}" \
+            -e INPUT_TEXT="${INPUT_TEXT}" \
+            mlops

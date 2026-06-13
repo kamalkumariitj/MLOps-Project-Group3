@@ -1,6 +1,6 @@
 # RoBERTa ANLI Classifier
 
-MLOps Assignment 2 - IIT Jodhpur PGD AI Program
+MLOps Assignment 3 - IIT Jodhpur PGD AI Program
 
 ## Authors
 
@@ -23,12 +23,13 @@ Primary notebook:
 
 This repository also includes a Python script-based pipeline for non-notebook runs:
 
-- `main.py`: orchestrates pipeline stages (`data -> train -> eval`)
-- `data.py`: loads `facebook/anli`, cleans data, encodes labels, saves processed dataset
-- `train.py`: tokenizes text pairs, fine-tunes `roberta-base`, saves model/tokenizer/metrics
-- `eval.py`: evaluates saved model and writes `eval_report.json`
-- `config.py`: central configuration loader from environment variables / `.env`
-- `utils.py`: shared dataset, cleaning, metrics, and seed utilities
+- `src/main.py`: orchestrates pipeline stages (`data -> train -> eval`) and inference mode
+- `src/data.py`: loads `facebook/anli`, cleans data, encodes labels, saves processed dataset
+- `src/train.py`: tokenizes text pairs, fine-tunes `roberta-base`, saves model/tokenizer/metrics
+- `src/eval.py`: evaluates saved model and writes `eval_report.json`
+- `src/inference.py`: runs single-text inference against the configured Hugging Face model
+- `src/config.py`: central configuration loader from environment variables / `.env`
+- `src/utils.py`: shared dataset, cleaning, metrics, and seed utilities
 
 ### Run the Python Pipeline
 
@@ -40,27 +41,52 @@ This repository also includes a Python script-based pipeline for non-notebook ru
 
 4. Run all stages:
 
-`python main.py --run-mode FULL_RUN --stage all`
+`python src/main.py --run-mode FULL_RUN --stage all`
 
 Quick smoke run:
 
-`python main.py --run-mode SMALL_RUN --stage all --disable-wandb --no-push-to-hub`
+`python src/main.py --run-mode SMALL_RUN --stage all --disable-wandb --no-push-to-hub`
 
 Run only one stage:
 
-- `python main.py --stage data`
-- `python main.py --stage train`
-- `python main.py --stage eval`
+- `python src/main.py --stage data`
+- `python src/main.py --stage train`
+- `python src/main.py --stage eval`
+
+## Run inference mode:
+
+`python src/main.py --mode inference --input-text "premise: A man is playing guitar hypothesis: A person is making music"`
+
+Optional (inference accepts it, but does not use it): `--run-mode SMALL_RUN|FULL_RUN`
+
+Inference mode uses the model configured in `src/config.py`:
+`kamalchaurasia-iitj/mlops-anli-classifier-roberta`.
 
 ## Run with Docker
 
 Build image:
 
-`docker build -t mlops-assignment3-group3 .`
+`docker build --build-arg HF_MODEL_NAME=kamalchaurasia-iitj/mlops-anli-classifier-roberta -t mlops-assignment3-group3 .`
 
-Run container with Dockerfile default command:
+Build image with a custom Hugging Face model:
 
-`docker run --rm mlops-assignment3-group3`
+`docker build --build-arg HF_MODEL_NAME=your-username/your-model -t mlops-assignment3-group3 .`
+
+Default HF model is `kamalchaurasia-iitj/mlops-anli-classifier-roberta`, and fallback model is `roberta-base`.
+
+Run Docker in inference mode:
+
+`docker run --rm -e APP_MODE=inference -e INPUT_TEXT="premise: A man is playing guitar hypothesis: A person is making music" mlops-assignment3-group3`
+
+Default Docker mode is also `inference`, so `APP_MODE=inference` is optional.
+
+Run Docker in train mode:
+
+`docker run --rm -e APP_MODE=train mlops-assignment3-group3`
+
+Run Docker in train mode with explicit run mode:
+
+`docker run --rm -e APP_MODE=train -e RUN_MODE=SMALL_RUN mlops-assignment3-group3`
 
 Run full command (same pattern used in CI) and persist outputs locally:
 
@@ -68,10 +94,8 @@ Run full command (same pattern used in CI) and persist outputs locally:
 mkdir -p results
 docker run --rm \
   --user root \
-  -e HF_TOKEN="$HF_TOKEN" \
-  -e WANDB_API_KEY="$WANDB_API_KEY" \
   -v "$(pwd):/app" \
-  mlops-assignment3-group3 python main.py \
+  mlops-assignment3-group3 python src/main.py \
     --run-mode SMALL_RUN \
     --disable-wandb \
     --no-push-to-hub \
@@ -82,47 +106,56 @@ docker run --rm \
     --report-path /app/results/eval_report.json
 ```
 
-## GitHub Actions Pipeline (`mlops-pipeline.yml`)
+## GitHub Actions CI (`ci.yml`)
 
-Workflow file: `.github/workflows/mlops-pipeline.yml`
+Workflow file: `.github/workflows/ci.yml`
 
 Triggers:
 
-- Push to `main` or `develop`
-- Manual run from Actions tab (`workflow_dispatch`)
+- Push to `develop`
+- Pull request targeting `main`
+
+What this workflow does:
+
+1. Checks out the repository.
+2. Sets up Python `3.11`.
+3. Installs dependencies and `flake8`.
+4. Runs lint checks on `src/` with max line length `120`.
+
+## GitHub Actions Inference Pipeline (`inference.yml`)
+
+Workflow file: `.github/workflows/inference.yml`
+
+Trigger:
+
+- Manual run only (`workflow_dispatch`)
+
+Manual run inputs:
+
+- `input_text` (text for inference)
+- `hf_model_name` (HF model name used as Docker build arg, default `kamalchaurasia-iitj/mlops-anli-classifier-roberta`)
 
 Required repository secrets:
 
 - `DOCKERHUB_USERNAME`
 - `DOCKERHUB_TOKEN`
 - `HF_TOKEN`
-- `WANDB_API_KEY`
 
 What this workflow does:
 
-1. Checks out the repo.
-2. Builds Docker image.
-3. Logs in to Docker Hub and pushes image tags:
-   - `latest`
-   - `${{ github.sha }}`
-4. Runs the pipeline inside Docker using `main.py` in `SMALL_RUN` mode.
-5. Uploads evaluation artifacts.
-
-Manual run options in GitHub Actions:
-
-- `push_to_hub` (`true/false`)
-- `hf_repo` (Hugging Face repo id)
+1. Checks out the repository.
+2. Builds Docker image with `HF_MODEL_NAME`.
+3. Logs in and pushes Docker image to Docker Hub.
+4. Runs Docker in inference mode using the provided `input_text`.
 
 ## Current Pipeline (As Implemented)
 
-1. Load ANLI from Hugging Face Datasets using load_dataset("facebook/anli").
-2. Build text-pair inputs in the form: premise: ... hypothesis: ...
-3. Prepare train/test sets from ANLI rounds.
-4. Run a baseline TF-IDF + Logistic Regression model.
-5. Tokenize with RobertaTokenizer and build custom Torch datasets.
-6. Fine-tune RobertaForSequenceClassification via Hugging Face Trainer.
-7. Evaluate with accuracy, weighted F1, classification report, and save eval_report.json.
-8. Optionally log metrics/artifacts to W&B and push tokenizer/model artifacts to Hugging Face Hub.
+1. Trigger `inference.yml` manually from GitHub Actions (`workflow_dispatch`).
+2. Provide `input_text` and optionally `hf_model_name` (default: `kamalchaurasia-iitj/mlops-anli-classifier-roberta`).
+3. Build Docker image using `HF_MODEL_NAME` build argument.
+4. Log in to Docker Hub and push image tags (`latest` and `${{ github.sha }}`).
+5. Run Docker container in inference mode (`APP_MODE=inference`) with `INPUT_TEXT` and `HF_TOKEN`.
+6. Produce inference output as JSON with predicted label and class scores.
 
 ## Run Modes
 
@@ -131,7 +164,7 @@ The notebook includes a dedicated run-mode key cell near the top.
 - RUN_MODE = SMALL_RUN
 - RUN_MODE = FULL_RUN
 
-Behavior:
+Behavior: (Optional for inference mode, useful only for train mode)
 
 - SMALL_RUN
 	- Reduced dataset slices for fast smoke testing.
@@ -141,6 +174,12 @@ Behavior:
 	- Uses larger dataset configuration.
 	- Full training schedule.
 	- W&B tracking is enabled.
+
+Script run modes:
+
+- `--mode train` (default): runs data/train/eval flow, use `--run-mode SMALL_RUN|FULL_RUN`.
+- `--mode inference`: runs single-text inference flow.
+- In inference flow, `--run-mode` is optional and effectively ignored.
 
 ## Key Configuration Used In Notebook
 
