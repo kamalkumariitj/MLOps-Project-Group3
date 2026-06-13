@@ -52,6 +52,11 @@ jobs:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           INPUT_TEXT: ${{ github.event.inputs.input_text }}
         run: |
+          if [ -z "${INPUT_TEXT}" ]; then
+            echo "::error::INPUT_TEXT is empty. Provide workflow input_text."
+            exit 1
+          fi
+
           docker run --rm \
             -e APP_MODE=inference \
             -e HF_TOKEN="${HF_TOKEN}" \
