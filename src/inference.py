@@ -1,6 +1,7 @@
 import argparse
 import json
 import os
+import warnings
 from pathlib import Path
 
 import torch
@@ -42,19 +43,51 @@ def labels_are_placeholders(id2label: dict[int, str]) -> bool:
     return bool(id2label) and all(str(v).startswith("LABEL_") for v in id2label.values())
 
 
+def parse_input_texts(raw_input_text: str) -> list[str]:
+    normalized = raw_input_text.replace("\\n", "\n")
+    return [line.strip() for line in normalized.splitlines() if line.strip()]
+
+
 def main() -> None:
     args = parse_args()
     cfg = load_config()
     if not args.input_text or not args.input_text.strip():
-        raise ValueError("INPUT_TEXT is required. Pass --input-text or set INPUT_TEXT environment variable.")
+        raise ValueError(
+            "INPUT_TEXT is required. "
+            "Pass --input-text or set INPUT_TEXT environment variable."
+        )
 
     device = resolve_device(args.device)
-    tokenizer = AutoTokenizer.from_pretrained(cfg.inference_model_name, token=args.hf_token)
-    model = AutoModelForSequenceClassification.from_pretrained(cfg.inference_model_name, token=args.hf_token).to(device)
+    model_name_in_use = cfg.inference_model_name
+    try:
+        tokenizer = AutoTokenizer.from_pretrained(model_name_in_use, token=args.hf_token)
+        model = AutoModelForSequenceClassification.from_pretrained(model_name_in_use, token=args.hf_token).to(device)
+    except Exception as exc:
+        if cfg.inference_fallback_model_name and cfg.inference_fallback_model_name != model_name_in_use:
+            warnings.warn(
+                f"Failed to load HF_MODEL_NAME='{model_name_in_use}'. Falling back to "
+                f"'{cfg.inference_fallback_model_name}'. Error: {exc}"
+            )
+            model_name_in_use = cfg.inference_fallback_model_name
+            tokenizer = AutoTokenizer.from_pretrained(
+                model_name_in_use, token=args.hf_token
+            )
+            model = AutoModelForSequenceClassification.from_pretrained(
+                model_name_in_use, token=args.hf_token
+            ).to(device)
+        else:
+            raise
     model.eval()
 
+    input_texts = parse_input_texts(args.input_text)
+    if not input_texts:
+        raise ValueError(
+            "INPUT_TEXT is required. "
+            "Provide one or more non-empty lines."
+        )
+
     encoded = tokenizer(
-        [args.input_text.strip()],
+        input_texts,
         truncation=True,
         padding=True,
         max_length=args.max_length,
@@ -63,7 +96,7 @@ def main() -> None:
     encoded = {k: v.to(device) for k, v in encoded.items()}
 
     with torch.no_grad():
-        logits = model(**encoded).logits[0]
+        logits = model(**encoded).logits
         probs = torch.softmax(logits, dim=-1)
 
     id2label = {int(k): str(v) for k, v in (getattr(model.config, "id2label", {}) or {}).items()}
@@ -77,21 +110,44 @@ def main() -> None:
         if label2id_has_real_labels:
             id2label = {idx: name for name, idx in label2id.items()}
 
-    if (not id2label or labels_are_placeholders(id2label)) and probs.shape[0] == len(ANLI_LABELS):
+    if (not id2label or labels_are_placeholders(id2label)) and probs.shape[-1] == len(ANLI_LABELS):
         id2label = {i: label for i, label in enumerate(ANLI_LABELS)}
 
-    pred_idx = int(torch.argmax(probs).item())
-    pred_label = id2label.get(pred_idx, f"LABEL_{pred_idx}")
-    scores = {id2label.get(i, f"LABEL_{i}"): float(probs[i].item()) for i in range(probs.shape[0])}
+    predictions = []
+    for row_index, text in enumerate(input_texts):
+        row_probs = probs[row_index]
+        pred_idx = int(torch.argmax(row_probs).item())
+        pred_label = id2label.get(pred_idx, f"LABEL_{pred_idx}")
+        scores = {
+            id2label.get(i, f"LABEL_{i}"): float(row_probs[i].item())
+            for i in range(row_probs.shape[0])
+        }
+        predictions.append(
+            {
+                "input_text": text,
+                "predicted_label": pred_label,
+                "predicted_index": pred_idx,
+                "scores": scores,
+            }
+        )
 
-    result = {
-        "model_name": cfg.inference_model_name,
-        "input_text": args.input_text,
-        "predicted_label": pred_label,
-        "predicted_index": pred_idx,
-        "scores": scores,
-        "device": str(device),
-    }
+    if len(predictions) == 1:
+        result = {
+            "model_name": model_name_in_use,
+            "input_text": predictions[0]["input_text"],
+            "predicted_label": predictions[0]["predicted_label"],
+            "predicted_index": predictions[0]["predicted_index"],
+            "scores": predictions[0]["scores"],
+            "device": str(device),
+            "total_inputs": 1,
+        }
+    else:
+        result = {
+            "model_name": model_name_in_use,
+            "device": str(device),
+            "total_inputs": len(predictions),
+            "results": predictions,
+        }
     print(json.dumps(result, ensure_ascii=False))
 
 
