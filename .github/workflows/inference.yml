@@ -48,10 +48,10 @@ jobs:
       - name: Run inference mode
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          INPUT_TEXT: "${{ github.event.inputs.input_text || vars.INFERENCE_INPUT_TEXT || 'premise: A man is playing guitar hypothesis: A person is making music' }}"
+          INPUT_TEXT: ${{ github.event.inputs.input_text }}
         run: |
           if [ -z "${INPUT_TEXT}" ]; then
-            echo "::error::INPUT_TEXT is empty. Provide workflow input_text or set INFERENCE_INPUT_TEXT variable."
+            echo "::error::INPUT_TEXT is empty. Provide workflow input_text."
             exit 1
           fi
 
