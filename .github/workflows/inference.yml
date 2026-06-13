@@ -2,7 +2,7 @@ name: MLOps Inference Pipeline
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, develop]  
   workflow_dispatch:
     inputs:
       input_text:
@@ -50,14 +50,10 @@ jobs:
       - name: Run inference mode
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          INPUT_TEXT: ${{ github.event.inputs.input_text }}
         run: |
-          INPUT_TEXT_VALUE="premise: A man is playing guitar hypothesis: A person is making music"
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ github.event.inputs.input_text }}" ]; then
-            INPUT_TEXT_VALUE="${{ github.event.inputs.input_text }}"
-          fi
-
           docker run --rm \
             -e APP_MODE=inference \
             -e HF_TOKEN="${HF_TOKEN}" \
-            -e INPUT_TEXT="${INPUT_TEXT_VALUE}" \
+            -e INPUT_TEXT="${INPUT_TEXT}" \
             mlops
