@@ -1,6 +1,8 @@
 name: MLOps Inference Pipeline
 
 on:
+  push:
+    branches: [main, develop]
   workflow_dispatch:
     inputs:
       input_text:
@@ -48,10 +50,10 @@ jobs:
       - name: Run inference mode
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          INPUT_TEXT: ${{ github.event.inputs.input_text }}
+          INPUT_TEXT: "${{ github.event.inputs.input_text || vars.INFERENCE_INPUT_TEXT || 'premise: A man is playing guitar hypothesis: A person is making music' }}"
         run: |
           if [ -z "${INPUT_TEXT}" ]; then
-            echo "::error::INPUT_TEXT is empty. Provide workflow input_text."
+            echo "::error::INPUT_TEXT is empty. Provide workflow input_text or set INFERENCE_INPUT_TEXT variable."
             exit 1
           fi
 
