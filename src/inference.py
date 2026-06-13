@@ -56,6 +56,7 @@ def main() -> None:
             "INPUT_TEXT is required. "
             "Pass --input-text or set INPUT_TEXT environment variable."
         )
+    raw_input_text = args.input_text
 
     device = resolve_device(args.device)
     model_name_in_use = cfg.inference_model_name
@@ -79,7 +80,7 @@ def main() -> None:
             raise
     model.eval()
 
-    input_texts = parse_input_texts(args.input_text)
+    input_texts = parse_input_texts(raw_input_text)
     if not input_texts:
         raise ValueError(
             "INPUT_TEXT is required. "
