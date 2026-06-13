@@ -1,6 +1,6 @@
 # RoBERTa ANLI Classifier
 
-MLOps Assignment 2 - IIT Jodhpur PGD AI Program
+MLOps Assignment 3 - IIT Jodhpur PGD AI Program
 
 ## Authors
 
